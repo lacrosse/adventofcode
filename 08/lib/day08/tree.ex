@@ -7,28 +7,34 @@ defmodule Day08.Tree do
     tree
   end
 
-  def from_definition_with_tail([children_count, meta_count | definition_tail]) do
+  def sum_metadata(%__MODULE__{children: children, metadata: metadata}) do
+    Enum.sum(metadata ++ Enum.map(children, &sum_metadata/1))
+  end
+
+  def value(%__MODULE__{children: []} = tree), do: sum_metadata(tree)
+
+  def value(%__MODULE__{children: children, metadata: metadata}) do
+    metadata
+    |> Enum.map(&Enum.at(children, &1 - 1))
+    |> Enum.filter(& &1)
+    |> Enum.map(&value/1)
+    |> Enum.sum()
+  end
+
+  defp from_definition_with_tail([children_count, meta_count | definition_tail]) do
     {children_count, meta_count, definition_tail}
 
     {children, new_tail} = children_from_definition_with_tail(definition_tail, children_count)
 
     {metadata, new_tail} = Enum.split(new_tail, meta_count)
 
-    {%Day08.Tree{children: children, metadata: metadata}, new_tail}
-  end
-
-  def sum_metadata(%Day08.Tree{children: children, metadata: metadata}) do
-    Enum.sum(metadata ++ Enum.map(children, &sum_metadata/1))
+    {%__MODULE__{children: children, metadata: metadata}, new_tail}
   end
 
   defp children_from_definition_with_tail(definition, count, children \\ [])
 
   defp children_from_definition_with_tail(definition, 0, children) do
     {Enum.reverse(children), definition}
-  end
-
-  defp children_from_definition_with_tail([], count, _) when count > 0 do
-    raise("no more defs but #{count} required")
   end
 
   defp children_from_definition_with_tail(definition, count, children) do
