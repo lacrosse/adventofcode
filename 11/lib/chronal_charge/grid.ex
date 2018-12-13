@@ -1,24 +1,22 @@
 defmodule ChronalCharge.Grid do
   def init(serial_number) do
-    for x <- 1..300 do
-      for y <- 1..300 do
-        {{x, y}, cell_power({x, y}, serial_number)}
-      end
-    end
+    for x <- 1..300,
+        y <- 1..300,
+        do: {{x, y}, cell_power({x, y}, serial_number)},
+        into: %{}
   end
 
   def solve(grid) do
     {coords, _} =
-      for rack_pack <- Enum.chunk_every(grid, 3, 1),
-          offset <- 0..297 do
-        rack_pack
-        |> Enum.flat_map(&(&1 |> Enum.drop(offset) |> Enum.take(3)))
-      end
-      |> Enum.map(fn [{coords, _} | _] = cells ->
-        power = Enum.reduce(cells, 0, fn {_, power}, acc -> acc + power end)
+      for x_range <- Enum.chunk_every(1..300, 3, 1),
+          y_range <- Enum.chunk_every(1..300, 3, 1) do
+        [x | _] = x_range
+        [y | _] = y_range
 
-        {coords, power}
-      end)
+        power = Enum.sum(for(x <- x_range, y <- y_range, do: Map.get(grid, {x, y})))
+
+        {{x, y}, power}
+      end
       |> Enum.max_by(&elem(&1, 1))
 
     coords
