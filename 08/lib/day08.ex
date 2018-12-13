@@ -2,9 +2,10 @@ defmodule Day08 do
   alias Day08.Tree
 
   def solve do
-    input = 'input.txt' |> File.read!() |> String.trim_trailing()
-
-    solve_input(input)
+    'input.txt'
+    |> File.read!()
+    |> String.trim_trailing()
+    |> solve_input()
   end
 
   @doc """
