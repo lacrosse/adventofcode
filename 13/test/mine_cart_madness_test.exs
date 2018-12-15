@@ -4,6 +4,6 @@ defmodule MineCartMadnessTest do
 
   @tag timeout: 1000
   test "solves" do
-    assert MineCartMadness.solve() == {{43, 111}, nil}
+    assert MineCartMadness.solve() == {{43, 111}, {44, 56}}
   end
 end

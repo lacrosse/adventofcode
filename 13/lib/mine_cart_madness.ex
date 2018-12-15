@@ -27,8 +27,10 @@ defmodule MineCartMadness do
     {{7, 3}, nil}
   """
   def solve_input(input) do
-    input
-    |> Field.init()
-    |> Field.first_crash_location()
+    field =
+      input
+      |> Field.init()
+
+    {Field.first_crash_location(field), Field.last_cart_location(field)}
   end
 end
