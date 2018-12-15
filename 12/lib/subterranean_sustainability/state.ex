@@ -55,7 +55,7 @@ defmodule SubterraneanSustainability.State do
 
   def sum_of_pots(%__MODULE__{pottery: pottery, offset: offset}) do
     pottery
-    |> Enum.zip(Stream.iterate(offset, &(&1 + 1)))
+    |> Enum.with_index(offset)
     |> Enum.filter(fn {v, _} -> v == true end)
     |> Enum.reduce(0, fn {_, i}, acc -> acc + i end)
   end
