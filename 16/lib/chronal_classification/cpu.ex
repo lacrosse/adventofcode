@@ -28,23 +28,31 @@ defmodule ChronalClassification.CPU do
   @spec opcode_names() :: [atom()]
   def opcode_names, do: @opcode_names
 
-  @spec apply(cpu(), {op(), arg(), arg(), reg()}) :: cpu()
-  def apply(cpu, {:addr, a, b, c}), do: apply_reg_reg(cpu, a, b, c, &+/2)
-  def apply(cpu, {:addi, a, b, c}), do: apply_reg_val(cpu, a, b, c, &+/2)
-  def apply(cpu, {:mulr, a, b, c}), do: apply_reg_reg(cpu, a, b, c, &*/2)
-  def apply(cpu, {:muli, a, b, c}), do: apply_reg_val(cpu, a, b, c, &*/2)
-  def apply(cpu, {:banr, a, b, c}), do: apply_reg_reg(cpu, a, b, c, &band/2)
-  def apply(cpu, {:bani, a, b, c}), do: apply_reg_val(cpu, a, b, c, &band/2)
-  def apply(cpu, {:borr, a, b, c}), do: apply_reg_reg(cpu, a, b, c, &bor/2)
-  def apply(cpu, {:bori, a, b, c}), do: apply_reg_val(cpu, a, b, c, &bor/2)
-  def apply(cpu, {:setr, a, _, c}), do: set_register(cpu, c, get_register(cpu, a))
-  def apply(cpu, {:seti, a, _, c}), do: set_register(cpu, c, a)
-  def apply(cpu, {:gtir, a, b, c}), do: apply_binary_ir(cpu, a, b, c, &>/2)
-  def apply(cpu, {:gtri, a, b, c}), do: apply_binary_ri(cpu, a, b, c, &>/2)
-  def apply(cpu, {:gtrr, a, b, c}), do: apply_binary_rr(cpu, a, b, c, &>/2)
-  def apply(cpu, {:eqir, a, b, c}), do: apply_binary_ir(cpu, a, b, c, &==/2)
-  def apply(cpu, {:eqri, a, b, c}), do: apply_binary_ri(cpu, a, b, c, &==/2)
-  def apply(cpu, {:eqrr, a, b, c}), do: apply_binary_rr(cpu, a, b, c, &==/2)
+  @spec init() :: cpu()
+  def init, do: {0, 0, 0, 0}
+
+  @spec apply_op(cpu(), {op(), arg(), arg(), reg()}) :: cpu()
+  def apply_op(cpu, {:addr, a, b, c}), do: apply_reg_reg(cpu, a, b, c, &+/2)
+  def apply_op(cpu, {:addi, a, b, c}), do: apply_reg_val(cpu, a, b, c, &+/2)
+  def apply_op(cpu, {:mulr, a, b, c}), do: apply_reg_reg(cpu, a, b, c, &*/2)
+  def apply_op(cpu, {:muli, a, b, c}), do: apply_reg_val(cpu, a, b, c, &*/2)
+  def apply_op(cpu, {:banr, a, b, c}), do: apply_reg_reg(cpu, a, b, c, &band/2)
+  def apply_op(cpu, {:bani, a, b, c}), do: apply_reg_val(cpu, a, b, c, &band/2)
+  def apply_op(cpu, {:borr, a, b, c}), do: apply_reg_reg(cpu, a, b, c, &bor/2)
+  def apply_op(cpu, {:bori, a, b, c}), do: apply_reg_val(cpu, a, b, c, &bor/2)
+  def apply_op(cpu, {:setr, a, _, c}), do: set_register(cpu, c, get_register(cpu, a))
+  def apply_op(cpu, {:seti, a, _, c}), do: set_register(cpu, c, a)
+  def apply_op(cpu, {:gtir, a, b, c}), do: apply_binary_ir(cpu, a, b, c, &>/2)
+  def apply_op(cpu, {:gtri, a, b, c}), do: apply_binary_ri(cpu, a, b, c, &>/2)
+  def apply_op(cpu, {:gtrr, a, b, c}), do: apply_binary_rr(cpu, a, b, c, &>/2)
+  def apply_op(cpu, {:eqir, a, b, c}), do: apply_binary_ir(cpu, a, b, c, &==/2)
+  def apply_op(cpu, {:eqri, a, b, c}), do: apply_binary_ri(cpu, a, b, c, &==/2)
+  def apply_op(cpu, {:eqrr, a, b, c}), do: apply_binary_rr(cpu, a, b, c, &==/2)
+
+  def apply_program(cpu, []), do: cpu
+
+  def apply_program(cpu, [op | program_tail]),
+    do: cpu |> apply_op(op) |> apply_program(program_tail)
 
   defp set_register({_, b, c, d}, 0, val), do: {val, b, c, d}
   defp set_register({a, _, c, d}, 1, val), do: {a, val, c, d}
