@@ -35,9 +35,20 @@ defmodule BeverageBandits.Cave do
     %__MODULE__{walls: walls, fighters: fighters}
   end
 
+  @spec winning_battle_result(t(), pos_integer()) :: pos_integer()
+  def winning_battle_result(%__MODULE__{} = cave, elf_hit_severity \\ 4) do
+    case try_to_win_battle(cave, elf_hit_severity) do
+      {:ok, battle_result} ->
+        battle_result
+
+      :fail ->
+        winning_battle_result(cave, elf_hit_severity + 1)
+    end
+  end
+
   @spec battle_result(t()) :: pos_integer()
   def battle_result(%__MODULE__{} = cave) do
-    {winners, rounds} = battle(cave)
+    {:ok, winners, rounds} = battle(cave, elf_hit_severity: 3)
 
     winners_health =
       winners
@@ -47,50 +58,76 @@ defmodule BeverageBandits.Cave do
     rounds * winners_health
   end
 
-  defp battle(%__MODULE__{} = cave, rounds \\ 0) do
-    if System.get_env("DEBUG"), do: visualize(cave, rounds)
+  defp try_to_win_battle(%__MODULE__{} = cave, elf_hit_severity) do
+    case battle(cave, elf_hit_severity: elf_hit_severity, save_elves: true) do
+      {:ok, winners, rounds} ->
+        winners_health =
+          winners
+          |> Enum.map(fn %Fighter{health: health} -> health end)
+          |> Enum.sum()
 
-    case fight_round(cave) do
-      {:fight, new_cave} -> battle(new_cave, rounds + 1)
-      {:victory, winners} -> {winners, rounds}
+        {:ok, rounds * winners_health}
+
+      :fail ->
+        :fail
     end
   end
 
-  defp fight_round(%__MODULE__{fighters: fighters} = cave) do
+  defp battle(%__MODULE__{} = cave, opts, rounds \\ 0) do
+    if System.get_env("DEBUG"), do: visualize(cave, rounds)
+
+    case fight_round(cave, opts) do
+      {:fight, new_cave, deaths} ->
+        if opts[:save_elves] && Enum.find(deaths, fn d -> d == :elf end) do
+          :fail
+        else
+          battle(new_cave, opts, rounds + 1)
+        end
+
+      {:victory, winners, deaths} ->
+        if opts[:save_elves] && Enum.find(deaths, fn d -> d == :elf end) do
+          :fail
+        else
+          {:ok, winners, rounds}
+        end
+    end
+  end
+
+  defp fight_round(%__MODULE__{fighters: fighters} = cave, opts) do
     pre_fight_fighters_coords =
       fighters
       |> Enum.map(&elem(&1, 0))
       |> Enum.sort_by(&Geometry.reading_order/1)
 
-    case act_on(pre_fight_fighters_coords, {:cont, cave}) do
-      {:victory, last_cave} ->
-        {:victory, last_cave.fighters |> Enum.map(&elem(&1, 1))}
+    case act_on(pre_fight_fighters_coords, {:cont, cave}, opts) do
+      {:victory, last_cave, deaths} ->
+        {:victory, last_cave.fighters |> Enum.map(&elem(&1, 1)), deaths}
 
-      new_cave ->
-        {:fight, new_cave}
+      {:fight, new_cave, deaths} ->
+        {:fight, new_cave, deaths}
     end
   end
 
-  defp act_on(coords, state)
-  defp act_on(_, {:halt, val}), do: val
-  defp act_on([], {:cont, cave}), do: cave
+  defp act_on(coords, state, deaths \\ [], opts)
+  defp act_on(_, {:halt, val}, deaths, _), do: {:victory, val, deaths}
+  defp act_on([], {:cont, cave}, deaths, _), do: {:fight, cave, deaths}
 
-  defp act_on([actor_coords | tail], {:cont, cave}) do
-    case act(cave, actor_coords) do
+  defp act_on([actor_coords | tail], {:cont, cave}, deaths, opts) do
+    case act(cave, actor_coords, opts) do
       :victory ->
-        act_on(tail, {:halt, {:victory, cave}})
+        act_on(tail, {:halt, cave}, deaths, opts)
 
       {:fight, new_cave} ->
-        act_on(tail, {:cont, new_cave})
+        act_on(tail, {:cont, new_cave}, deaths, opts)
 
-      {:fight, new_cave, death_coords} ->
+      {:fight, new_cave, {death_coords, death_gender}} ->
         tail
         |> Enum.reject(fn coords -> coords == death_coords end)
-        |> act_on({:cont, new_cave})
+        |> act_on({:cont, new_cave}, [death_gender | deaths], opts)
     end
   end
 
-  defp act(%__MODULE__{fighters: fighters} = cave, actor_coords) do
+  defp act(%__MODULE__{fighters: fighters} = cave, actor_coords, opts) do
     case Map.pop(fighters, actor_coords) do
       {nil, _} ->
         {:fight, cave}
@@ -100,16 +137,15 @@ defmodule BeverageBandits.Cave do
 
         case move(actorless_cave, actor, actor_coords) do
           {:fight, moved_coords} ->
-            case fight(actorless_cave, actor, moved_coords) do
+            case fight(actorless_cave, actor, moved_coords, opts) do
               {:tough, fought_actorless_cave} ->
                 restored_fighters = fought_actorless_cave.fighters |> Map.put(moved_coords, actor)
                 {:fight, %__MODULE__{fought_actorless_cave | fighters: restored_fighters}}
 
-              {:easy, fought_actorless_cave, death_coords} ->
+              {:easy, fought_actorless_cave, death} ->
                 restored_fighters = fought_actorless_cave.fighters |> Map.put(moved_coords, actor)
 
-                {:fight, %__MODULE__{fought_actorless_cave | fighters: restored_fighters},
-                 death_coords}
+                {:fight, %__MODULE__{fought_actorless_cave | fighters: restored_fighters}, death}
             end
 
           :victory ->
@@ -146,7 +182,7 @@ defmodule BeverageBandits.Cave do
     end
   end
 
-  defp fight(%__MODULE__{fighters: fighters} = cave, %Fighter{gender: gender}, coords) do
+  defp fight(%__MODULE__{fighters: fighters} = cave, %Fighter{gender: gender}, coords, opts) do
     enemy = enemy(gender)
 
     enemies =
@@ -173,12 +209,19 @@ defmodule BeverageBandits.Cave do
           weakest_enemies
           |> Enum.min_by(fn {coords, _} -> Geometry.reading_order(coords) end)
 
-        case Fighter.hit(enemy) do
+        severity =
+          case gender do
+            :goblin -> 3
+            :elf -> opts[:elf_hit_severity]
+          end
+
+        case Fighter.hit(enemy, severity) do
           {:alive, new_enemy} ->
             {:tough, %__MODULE__{cave | fighters: Map.put(fighters, coords, new_enemy)}}
 
           :dead ->
-            {:easy, %__MODULE__{cave | fighters: Map.delete(fighters, coords)}, coords}
+            {:easy, %__MODULE__{cave | fighters: Map.delete(fighters, coords)},
+             {coords, enemy.gender}}
         end
     end
   end

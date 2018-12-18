@@ -1,7 +1,7 @@
 defmodule BeverageBandits do
   alias BeverageBandits.Cave
 
-  @spec solve() :: non_neg_integer()
+  @spec solve() :: {non_neg_integer(), non_neg_integer()}
   def solve do
     'input.txt'
     |> File.read!()
@@ -19,7 +19,7 @@ defmodule BeverageBandits do
     ...> #######
     ...> \"\"\"
     iex> BeverageBandits.solve_input(input)
-    27730
+    {27730, 4988}
 
     iex> input = \"\"\"
     ...> #######
@@ -31,7 +31,7 @@ defmodule BeverageBandits do
     ...> #######
     ...> \"\"\"
     iex> BeverageBandits.solve_input(input)
-    39514
+    {39514, 31284}
 
     iex> input = \"\"\"
     ...> #######
@@ -43,7 +43,7 @@ defmodule BeverageBandits do
     ...> #######
     ...> \"\"\"
     iex> BeverageBandits.solve_input(input)
-    27755
+    {27755, 3478}
 
     iex> input = \"\"\"
     ...> #######
@@ -55,7 +55,7 @@ defmodule BeverageBandits do
     ...> #######
     ...> \"\"\"
     iex> BeverageBandits.solve_input(input)
-    28944
+    {28944, 6474}
 
     iex> input = \"\"\"
     ...> #######
@@ -67,7 +67,7 @@ defmodule BeverageBandits do
     ...> #######
     ...> \"\"\"
     iex> BeverageBandits.solve_input(input)
-    36334
+    {36334, 29064}
 
     iex> input = \"\"\"
     ...> #########
@@ -81,56 +81,20 @@ defmodule BeverageBandits do
     ...> #########
     ...> \"\"\"
     iex> BeverageBandits.solve_input(input)
-    18740
-
-    iex> input = \"\"\"
-    ...> ####
-    ...> ##E#
-    ...> #GG#
-    ...> ####
-    ...> \"\"\"
-    iex> BeverageBandits.solve_input(input)
-    13400
-
-    iex> input = \"\"\"
-    ...> #####
-    ...> #GG##
-    ...> #.###
-    ...> #..E#
-    ...> #.#G#
-    ...> #.E##
-    ...> #####
-    ...> \"\"\"
-    iex> BeverageBandits.solve_input(input)
-    13987
-
-    iex> input = \"\"\"
-    ...> #######
-    ...> #.E..G#
-    ...> #.#####
-    ...> #G#####
-    ...> #######
-    ...> \"\"\"
-    iex> BeverageBandits.solve_input(input)
-    10234
-
-    iex> input = \"\"\"
-    ...> ################
-    ...> #.......G......#
-    ...> #G.............#
-    ...> #..............#
-    ...> #....###########
-    ...> #....###########
-    ...> #.......EG.....#
-    ...> ################
-    ...> \"\"\"
-    iex> BeverageBandits.solve_input(input)
-    18468
+    {18740, 1140}
   """
-  @spec solve_input(String.t()) :: pos_integer()
+  @spec solve_input(binary()) :: {pos_integer(), pos_integer()}
   def solve_input(input) do
-    input
-    |> Cave.init()
-    |> Cave.battle_result()
+    first =
+      input
+      |> Cave.init()
+      |> Cave.battle_result()
+
+    second =
+      input
+      |> Cave.init()
+      |> Cave.winning_battle_result()
+
+    {first, second}
   end
 end

@@ -50,10 +50,12 @@ defmodule BeverageBandits.Fighter do
   end
 
   @spec hit(t()) :: :dead | {:alive, t()}
-  def hit(%__MODULE__{health: health} = fighter) when health > 3,
-    do: {:alive, %__MODULE__{fighter | health: health - 3}}
+  def hit(fighter, severity \\ 3)
 
-  def hit(%__MODULE__{}),
+  def hit(%__MODULE__{health: health} = fighter, severity) when health > severity,
+    do: {:alive, %__MODULE__{fighter | health: health - severity}}
+
+  def hit(%__MODULE__{}, _),
     do: :dead
 
   @doc """

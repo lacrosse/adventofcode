@@ -2,8 +2,8 @@ defmodule BeverageBanditsTest do
   use ExUnit.Case
   doctest BeverageBandits
 
-  @tag timeout: 3000
+  @tag timeout: 6000
   test "solves" do
-    assert BeverageBandits.solve() == 217_890
+    assert BeverageBandits.solve() == {217_890, 43645}
   end
 end
