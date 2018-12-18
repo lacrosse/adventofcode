@@ -76,30 +76,15 @@ defmodule ReservoirResearch.Ground do
           {{h_source_x, h_source_y} = h_source, column_tail}, {current_flow, current_stale} ->
             current_base = MapSet.union(clay, current_stale)
 
-            qvb = fn x ->
-              Enum.reduce_while(x, [], fn {x, y}, current_fill ->
-                cond do
-                  MapSet.member?(current_base, {x, y}) ->
-                    {:halt, {[], current_fill}}
-
-                  !MapSet.member?(current_base, {x, y + 1}) ->
-                    {:halt, {[{x, y}], current_fill}}
-
-                  true ->
-                    {:cont, [{x, y} | current_fill]}
-                end
-              end)
-            end
-
             {left_sources, left_fill} =
               Stream.iterate(h_source_x - 1, &(&1 - 1))
               |> Stream.map(&{&1, h_source_y})
-              |> qvb.()
+              |> fill_while(current_base)
 
             {right_sources, right_fill} =
               Stream.iterate(h_source_x + 1, &(&1 + 1))
               |> Stream.map(&{&1, h_source_y})
-              |> qvb.()
+              |> fill_while(current_base)
 
             found_sources = left_sources ++ right_sources
 
@@ -107,18 +92,13 @@ defmodule ReservoirResearch.Ground do
             fill_set = MapSet.new(fill)
 
             if MapSet.intersection(current_flow, fill_set) == fill_set do
-              new_flow_with_column =
-                current_flow
-                |> MapSet.union(MapSet.new(column_tail))
+              new_flow_with_column = MapSet.union(current_flow, MapSet.new(column_tail))
 
               if length(found_sources) == 0 do
                 new_flow_with_column_without_fill =
-                  new_flow_with_column
-                  |> MapSet.difference(fill_set)
+                  MapSet.difference(new_flow_with_column, fill_set)
 
-                new_stale =
-                  current_stale
-                  |> MapSet.union(fill_set)
+                new_stale = MapSet.union(current_stale, fill_set)
 
                 {:halt, {{new_flow_with_column_without_fill, new_stale}, []}}
               else
@@ -132,7 +112,9 @@ defmodule ReservoirResearch.Ground do
 
                 _ ->
                   new_flow_with_column =
-                    MapSet.union(current_flow, MapSet.new(fill ++ column_tail))
+                    current_flow
+                    |> MapSet.union(fill_set)
+                    |> MapSet.union(MapSet.new(column_tail))
 
                   {:halt, {{new_flow_with_column, current_stale}, found_sources}}
               end
@@ -172,6 +154,22 @@ defmodule ReservoirResearch.Ground do
     end
   end
 
+  defp fill_while(stream, current_base) do
+    stream
+    |> Enum.reduce_while([], fn {x, y}, current_fill ->
+      cond do
+        MapSet.member?(current_base, {x, y}) ->
+          {:halt, {[], current_fill}}
+
+        !MapSet.member?(current_base, {x, y + 1}) ->
+          {:halt, {[{x, y}], current_fill}}
+
+        true ->
+          {:cont, [{x, y} | current_fill]}
+      end
+    end)
+  end
+
   @spec measure_secondary_water(t()) :: {non_neg_integer(), non_neg_integer()}
   def measure_secondary_water(%__MODULE__{clay: clay, flow: flow, stale: stale}) do
     {{_, min_y}, {_, max_y}} = Enum.min_max_by(clay, &elem(&1, 1))
@@ -189,7 +187,7 @@ defmodule ReservoirResearch.Ground do
     {total_count, stale_count}
   end
 
-  @spec visualize(t) :: t
+  @spec visualize(t(), IO.device()) :: t()
   def visualize(
         %__MODULE__{
           clay: clay,
