@@ -22,7 +22,6 @@ defmodule ChronalClassification do
         cpu =
           Regex.run(@before_regex, before_op, capture: :all_but_first)
           |> Enum.map(&String.to_integer/1)
-          |> List.to_tuple()
 
         [opcode, a, b, c] =
           op
@@ -32,7 +31,6 @@ defmodule ChronalClassification do
         cpu_after =
           Regex.run(@after_regex, after_op, capture: :all_but_first)
           |> Enum.map(&String.to_integer/1)
-          |> List.to_tuple()
 
         likely_opcode_names =
           CPU.opcode_names()
@@ -62,7 +60,7 @@ defmodule ChronalClassification do
         {Map.fetch!(opcodes_to_names, opcode), a, b, c}
       end)
 
-    {second, _, _, _} =
+    [second, _, _, _] =
       CPU.init()
       |> CPU.apply_program(program)
 

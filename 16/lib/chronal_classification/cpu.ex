@@ -20,18 +20,18 @@ defmodule ChronalClassification.CPU do
     :eqrr
   ]
 
-  @type cpu :: {non_neg_integer(), non_neg_integer(), non_neg_integer(), non_neg_integer()}
-  @type op :: atom()
+  @type cpu :: [non_neg_integer]
+  @type op :: atom
   @type reg :: 0 | 1 | 2 | 3
-  @type arg :: reg | non_neg_integer()
+  @type arg :: reg | non_neg_integer
 
-  @spec opcode_names() :: [atom()]
+  @spec opcode_names() :: [atom]
   def opcode_names, do: @opcode_names
 
-  @spec init() :: cpu()
-  def init, do: {0, 0, 0, 0}
+  @spec init :: cpu
+  def init, do: [0, 0, 0, 0]
 
-  @spec apply_op(cpu(), {op(), arg(), arg(), reg()}) :: cpu()
+  @spec apply_op(cpu, {op, arg, arg, reg}) :: cpu
   def apply_op(cpu, {:addr, a, b, c}), do: apply_reg_reg(cpu, a, b, c, &+/2)
   def apply_op(cpu, {:addi, a, b, c}), do: apply_reg_val(cpu, a, b, c, &+/2)
   def apply_op(cpu, {:mulr, a, b, c}), do: apply_reg_reg(cpu, a, b, c, &*/2)
@@ -54,17 +54,15 @@ defmodule ChronalClassification.CPU do
   def apply_program(cpu, [op | program_tail]),
     do: cpu |> apply_op(op) |> apply_program(program_tail)
 
-  defp set_register({_, b, c, d}, 0, val), do: {val, b, c, d}
-  defp set_register({a, _, c, d}, 1, val), do: {a, val, c, d}
-  defp set_register({a, b, _, d}, 2, val), do: {a, b, val, d}
-  defp set_register({a, b, c, _}, 3, val), do: {a, b, c, val}
+  @spec set_register(cpu, reg, non_neg_integer) :: cpu
+  def set_register(cpu, n, val), do: List.replace_at(cpu, n, val)
 
-  defp get_register({val, _, _, _}, 0), do: val
-  defp get_register({_, val, _, _}, 1), do: val
-  defp get_register({_, _, val, _}, 2), do: val
-  defp get_register({_, _, _, val}, 3), do: val
+  @spec get_register(cpu, reg) :: non_neg_integer
+  def get_register(cpu, n), do: Enum.at(cpu, n)
 
-  defp apply_reg_reg(cpu, a, b, c, fun) do
+  @spec apply_reg_reg(cpu, reg, reg, reg, (non_neg_integer, non_neg_integer -> non_neg_integer)) ::
+          cpu
+  def apply_reg_reg(cpu, a, b, c, fun) do
     val_b = get_register(cpu, b)
     apply_reg_val(cpu, a, val_b, c, fun)
   end
