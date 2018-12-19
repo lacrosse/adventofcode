@@ -21,17 +21,18 @@ defmodule ChronalClassification.CPU do
   ]
 
   @type cpu :: [non_neg_integer]
-  @type op :: atom
-  @type reg :: 0 | 1 | 2 | 3
+  @type opcode_name :: atom
+  @type reg :: non_neg_integer
   @type arg :: reg | non_neg_integer
+  @type op :: {opcode_name, arg, arg, reg}
 
   @spec opcode_names() :: [atom]
   def opcode_names, do: @opcode_names
 
-  @spec init :: cpu
-  def init, do: [0, 0, 0, 0]
+  @spec init(pos_integer) :: cpu
+  def init(n), do: for(_ <- 1..n, do: 0)
 
-  @spec apply_op(cpu, {op, arg, arg, reg}) :: cpu
+  @spec apply_op(cpu, op) :: cpu
   def apply_op(cpu, {:addr, a, b, c}), do: apply_reg_reg(cpu, a, b, c, &+/2)
   def apply_op(cpu, {:addi, a, b, c}), do: apply_reg_val(cpu, a, b, c, &+/2)
   def apply_op(cpu, {:mulr, a, b, c}), do: apply_reg_reg(cpu, a, b, c, &*/2)
@@ -51,8 +52,8 @@ defmodule ChronalClassification.CPU do
 
   def apply_program(cpu, []), do: cpu
 
-  def apply_program(cpu, [op | program_tail]),
-    do: cpu |> apply_op(op) |> apply_program(program_tail)
+  def apply_program(cpu, [opcode_name | program_tail]),
+    do: cpu |> apply_op(opcode_name) |> apply_program(program_tail)
 
   @spec set_register(cpu, reg, non_neg_integer) :: cpu
   def set_register(cpu, n, val), do: List.replace_at(cpu, n, val)

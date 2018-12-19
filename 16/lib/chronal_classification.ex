@@ -61,7 +61,7 @@ defmodule ChronalClassification do
       end)
 
     [second, _, _, _] =
-      CPU.init()
+      CPU.init(4)
       |> CPU.apply_program(program)
 
     {first, second}
