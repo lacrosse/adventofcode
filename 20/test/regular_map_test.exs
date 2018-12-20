@@ -3,6 +3,6 @@ defmodule RegularMapTest do
   doctest RegularMap
 
   test "solves" do
-    assert RegularMap.solve() == 3983
+    assert RegularMap.solve() == {3983, 8486}
   end
 end

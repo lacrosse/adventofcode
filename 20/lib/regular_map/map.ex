@@ -7,9 +7,7 @@ defmodule RegularMap.Map do
   @spec traverse(t, binary, coords) :: {coords, t}
   def traverse(rmap, route, coords \\ {0, 0})
 
-  def traverse(rmap, "", coords) do
-    {coords, rmap}
-  end
+  def traverse(rmap, "", coords), do: {coords, rmap}
 
   def traverse(rmap, "N" <> route_tail, {x, y} = coords) do
     new_coords = {x, y - 1}
@@ -43,13 +41,51 @@ defmodule RegularMap.Map do
     traverse(new_rmap, new_route_tail, new_coords)
   end
 
-  @spec diameter(t, MapSet.t(coords), MapSet.t(coords), non_neg_integer) :: non_neg_integer
+  @spec diameter(
+          t,
+          MapSet.t(coords),
+          MapSet.t(coords),
+          non_neg_integer
+        ) :: non_neg_integer
   def diameter(
-        %__MODULE__{doors: doors} = rmap,
+        %__MODULE__{} = rmap,
         frontier \\ MapSet.new([{0, 0}]),
         visited \\ MapSet.new([{0, 0}]),
         acc \\ 0
       ) do
+    {new_frontier, new_visited} = step(rmap, frontier, visited)
+
+    if MapSet.size(new_frontier) > 0 do
+      diameter(rmap, new_frontier, new_visited, acc + 1)
+    else
+      acc
+    end
+  end
+
+  @spec unexplored_rooms(
+          t,
+          non_neg_integer,
+          MapSet.t(coords),
+          MapSet.t(coords),
+          non_neg_integer
+        ) :: non_neg_integer
+  def unexplored_rooms(
+        rmap,
+        n,
+        frontier \\ MapSet.new([{0, 0}]),
+        visited \\ MapSet.new([{0, 0}]),
+        acc \\ 0
+      )
+
+  def unexplored_rooms(%__MODULE__{doors: doors}, n, _, visited, n),
+    do: map_size(doors) - MapSet.size(visited)
+
+  def unexplored_rooms(%__MODULE__{} = rmap, n, frontier, visited, acc) do
+    {new_frontier, new_visited} = step(rmap, frontier, visited)
+    unexplored_rooms(rmap, n, new_frontier, new_visited, acc + 1)
+  end
+
+  defp step(%__MODULE__{doors: doors}, frontier, visited) do
     steps =
       frontier
       |> Enum.reduce(%MapSet{}, fn frontier_coords, current_steps ->
@@ -58,15 +94,7 @@ defmodule RegularMap.Map do
         |> MapSet.union(current_steps)
       end)
 
-    new_frontier = MapSet.difference(steps, visited)
-
-    new_visited = MapSet.union(visited, steps)
-
-    if MapSet.size(new_frontier) > 0 do
-      diameter(rmap, new_frontier, new_visited, acc + 1)
-    else
-      acc
-    end
+    {MapSet.difference(steps, visited), MapSet.union(visited, steps)}
   end
 
   defp open_door(%__MODULE__{doors: doors} = rmap, coords, new_coords) do
