@@ -20,9 +20,9 @@ defmodule ChronalClassification.CPU do
     :eqrr
   ]
 
-  @type cpu :: [non_neg_integer]
-  @type opcode_name :: atom
   @type reg :: non_neg_integer
+  @type cpu :: %{optional(reg) => non_neg_integer}
+  @type opcode_name :: atom
   @type arg :: reg | non_neg_integer
   @type op :: {opcode_name, arg, arg, reg}
 
@@ -30,7 +30,7 @@ defmodule ChronalClassification.CPU do
   def opcode_names, do: @opcode_names
 
   @spec init(pos_integer) :: cpu
-  def init(n), do: for(_ <- 1..n, do: 0)
+  def init(n), do: for(reg <- 0..(n - 1), do: {reg, 0}, into: %{})
 
   @spec apply_op(cpu, op) :: cpu
   def apply_op(cpu, {:addr, a, b, c}), do: apply_reg_reg(cpu, a, b, c, &+/2)
@@ -49,6 +49,8 @@ defmodule ChronalClassification.CPU do
   def apply_op(cpu, {:eqir, a, b, c}), do: apply_binary_ir(cpu, a, b, c, &==/2)
   def apply_op(cpu, {:eqri, a, b, c}), do: apply_binary_ri(cpu, a, b, c, &==/2)
   def apply_op(cpu, {:eqrr, a, b, c}), do: apply_binary_rr(cpu, a, b, c, &==/2)
+  def apply_op(cpu, {:remr, a, b, c}), do: apply_reg_reg(cpu, a, b, c, &rem/2)
+  def apply_op(cpu, {:noop, _, _, _}), do: cpu
 
   def apply_program(cpu, []), do: cpu
 
@@ -56,10 +58,13 @@ defmodule ChronalClassification.CPU do
     do: cpu |> apply_op(opcode_name) |> apply_program(program_tail)
 
   @spec set_register(cpu, reg, non_neg_integer) :: cpu
-  def set_register(cpu, n, val), do: List.replace_at(cpu, n, val)
+  def set_register(cpu, n, val), do: Map.put(cpu, n, val)
 
   @spec get_register(cpu, reg) :: non_neg_integer
-  def get_register(cpu, n), do: Enum.at(cpu, n)
+  def get_register(cpu, n), do: Map.get(cpu, n)
+
+  @spec incr_register(cpu, reg) :: cpu
+  def incr_register(cpu, n), do: Map.update!(cpu, n, &(&1 + 1))
 
   @spec apply_reg_reg(cpu, reg, reg, reg, (non_neg_integer, non_neg_integer -> non_neg_integer)) ::
           cpu
