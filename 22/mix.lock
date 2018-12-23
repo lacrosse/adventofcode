@@ -1,0 +1,3 @@
+%{
+  "eastar": {:hex, :eastar, "0.4.2", "45d8daae21ec6b97c00f17b6ec4674af3a26acc8dd06ff3bed43f6901f3bbf24", [], [], "hexpm"},
+}

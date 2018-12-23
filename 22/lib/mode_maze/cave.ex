@@ -22,14 +22,62 @@ defmodule ModeMaze.Cave do
     %__MODULE__{depth: depth, target: {x, y}}
   end
 
-  def area_risk_level(%__MODULE__{target: {t_x, t_y}} = cave) do
-    {region_risk_levels, _new_cave} =
-      for(x <- 0..t_x, y <- 0..t_y, do: {x, y})
-      |> Enum.map_reduce(cave, fn region, current_cave ->
+  def traverse(cave, t_x) do
+    {_, new_cave} =
+      for(y <- 0..cave.depth, x <- 0..t_x, do: {x, y})
+      |> Enum.map_reduce(cave, fn {r_x, r_y} = region, current_cave ->
+        if System.get_env("DEBUG") == "true" and r_x == 0 and rem(r_y, 1000) == 0,
+          do: IO.inspect(region, label: "traversing")
+
         risk_level(current_cave, region)
       end)
 
-    Enum.sum(region_risk_levels)
+    new_cave
+  end
+
+  @spec area_risk_level(ModeMaze.Cave.t()) :: {non_neg_integer, t}
+  def area_risk_level(%__MODULE__{target: {t_x, t_y}} = cave) do
+    {region_risk_levels, new_cave} =
+      for(x <- 0..t_x, y <- 0..t_y, do: {x, y})
+      |> Enum.map_reduce(cave, fn region, current_cave -> risk_level(current_cave, region) end)
+
+    {Enum.sum(region_risk_levels), new_cave}
+  end
+
+  @spec time_to_rescue(t) :: non_neg_integer
+  def time_to_rescue(%__MODULE__{target: target, depth: depth} = cave) do
+    neighbors = fn {{x, y}, gear} ->
+      [parallel_gear] = MapSet.delete(gear_options(cave, {x, y}), gear) |> MapSet.to_list()
+
+      local_neighbors =
+        [{x, y + 1}, {x + 1, y}, {x - 1, y}, {x, y - 1}]
+        |> Enum.reject(&solid_region?/1)
+        |> Enum.reject(fn {_, y} -> y > depth end)
+        |> Enum.filter(&MapSet.member?(gear_options(cave, &1), gear))
+        |> Enum.map(fn coords -> {coords, gear} end)
+
+      local_neighbors ++ [{{x, y}, parallel_gear}]
+    end
+
+    dist = fn
+      {coords, _}, {coords, _} -> 7
+      {_, gear}, {_, gear} -> 1
+    end
+
+    est = fn
+      {{x_1, y_1}, _}, {{x_2, y_2}, _} ->
+        abs(x_2 - x_1) + abs(y_2 - y_1)
+    end
+
+    env = {neighbors, dist, est}
+
+    start = {{0, 0}, :torch}
+
+    shortest_path = Astar.astar(env, start, {target, :torch})
+
+    [start | shortest_path]
+    |> Stream.chunk_every(2, 1, :discard)
+    |> Enum.reduce(0, fn [a, b], distance -> distance + dist.(a, b) end)
   end
 
   @spec geologic_index(t, coords) :: {geologic_index, t}
@@ -91,4 +139,15 @@ defmodule ModeMaze.Cave do
       {2, _} -> :narrow
     end
   end
+
+  def gear_options(%__MODULE__{} = cave, coords) do
+    case region_type(cave, coords) do
+      :rocky -> MapSet.new([:climbing, :torch])
+      :wet -> MapSet.new([:climbing, :neither])
+      :narrow -> MapSet.new([:torch, :neither])
+    end
+  end
+
+  defp solid_region?({x, y}) when x < 0 or y < 0, do: true
+  defp solid_region?(_), do: false
 end
