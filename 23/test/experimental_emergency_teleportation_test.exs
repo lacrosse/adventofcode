@@ -3,6 +3,6 @@ defmodule ExperimentalEmergencyTeleportationTest do
   doctest ExperimentalEmergencyTeleportation
 
   test "solves" do
-    assert ExperimentalEmergencyTeleportation.solve() == 383
+    assert ExperimentalEmergencyTeleportation.solve() == {383, 100_474_026}
   end
 end

@@ -20,11 +20,33 @@ defmodule ExperimentalEmergencyTeleportation do
     ...> pos=<1,3,1>, r=1
     ...> \"\"\"
     iex> ExperimentalEmergencyTeleportation.solve_input(input)
-    7
+    {7, 1}
+
+    iex> input = \"\"\"
+    ...> pos=<10,12,12>, r=2
+    ...> pos=<12,14,12>, r=2
+    ...> pos=<16,12,12>, r=4
+    ...> pos=<14,14,14>, r=6
+    ...> pos=<50,50,50>, r=200
+    ...> pos=<10,10,10>, r=5
+    ...> \"\"\"
+    iex> ExperimentalEmergencyTeleportation.solve_input(input)
+    {6, 36}
+
   """
   def solve_input(input) do
-    input
-    |> Swarm.parse()
-    |> Swarm.in_range_of_strongest()
+    swarm =
+      input
+      |> Swarm.parse()
+
+    first =
+      swarm
+      |> Swarm.in_range_of_strongest()
+
+    second =
+      swarm
+      |> Swarm.strongest_signal_distance()
+
+    {first, second}
   end
 end
