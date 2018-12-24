@@ -3,6 +3,7 @@ defmodule ImmuneSystemSimulator.Reindeer do
 
   @type group :: map()
   @type system :: %{optional(non_neg_integer) => group}
+  @type system_atom :: :immune | :infection
   @type t :: %__MODULE__{immune: system, infection: system}
 
   @group_regex ~r/\A(\d+) units each with (\d+) hit points(?: \((.+)\))? with an attack that does (\d+) (\w+) damage at initiative (\d+)\z/
@@ -15,25 +16,51 @@ defmodule ImmuneSystemSimulator.Reindeer do
     %__MODULE__{immune: immune_system, infection: infection}
   end
 
-  @spec remaining_units(t) :: pos_integer
+  @spec boost_immune_system(t, pos_integer) :: t
+  def boost_immune_system(%__MODULE__{immune: immune} = reindeer, boost) do
+    new_immune =
+      immune
+      |> Enum.map(fn {index, group} ->
+        {index, Map.update!(group, :damage_amount, &(&1 + boost))}
+      end)
+      |> Enum.into(%{})
+
+    %__MODULE__{reindeer | immune: new_immune}
+  end
+
+  @spec remaining_units(t) :: {system_atom, pos_integer}
   def remaining_units(%__MODULE__{} = reindeer) do
     %__MODULE__{immune: new_immune, infection: new_infection} =
       new_reindeer = fight_once(reindeer)
 
-    if reindeer == new_reindeer do
-      raise "hi"
-    end
-
     cond do
       new_immune == %{} ->
-        new_infection |> Enum.map(&elem(&1, 1)[:unit_count]) |> Enum.sum()
+        {:infection, new_infection |> Enum.map(&elem(&1, 1)[:unit_count]) |> Enum.sum()}
 
       new_infection == %{} ->
-        new_immune |> Enum.map(&elem(&1, 1)[:unit_count]) |> Enum.sum()
+        {:immune, new_immune |> Enum.map(&elem(&1, 1)[:unit_count]) |> Enum.sum()}
+
+      reindeer == new_reindeer ->
+        {:neither, reindeer}
 
       true ->
         remaining_units(new_reindeer)
     end
+  end
+
+  @spec remaining_units_after_sufficient_boost(t) :: pos_integer
+  def remaining_units_after_sufficient_boost(%__MODULE__{} = reindeer) do
+    {_, units} =
+      Stream.iterate(0, &(&1 + 1))
+      |> Stream.map(fn boost ->
+        boost_immune_system(reindeer, boost) |> remaining_units()
+      end)
+      |> Enum.find(fn
+        {:immune, _} -> true
+        _ -> false
+      end)
+
+    units
   end
 
   @spec fight_once(t) :: t
@@ -116,18 +143,19 @@ defmodule ImmuneSystemSimulator.Reindeer do
         projected_enemies =
           remaining_enemies
           |> Enum.map(fn {index, enemy_group} ->
-            {index, possible_damage(our_group, enemy_group), group_effective_power(enemy_group)}
+            {index, possible_damage(our_group, enemy_group), group_effective_power(enemy_group),
+             enemy_group[:initiative]}
           end)
-          |> Enum.filter(fn {_, damage, _} -> damage > 0 end)
+          |> Enum.filter(fn {_, damage, _, _} -> damage > 0 end)
 
         case projected_enemies do
           [] ->
             {{our_index, nil}, remaining_enemies}
 
           _ ->
-            {chosen_index, _, _} =
+            {chosen_index, _, _, _} =
               projected_enemies
-              |> Enum.max_by(fn {_, damage, power} -> {damage, power} end)
+              |> Enum.max_by(fn {_, damage, power, initiative} -> {damage, power, initiative} end)
 
             new_enemies = Map.delete(remaining_enemies, chosen_index)
             {{our_index, chosen_index}, new_enemies}

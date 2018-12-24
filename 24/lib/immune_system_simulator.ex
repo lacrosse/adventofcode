@@ -18,11 +18,21 @@ defmodule ImmuneSystemSimulator do
     ...> 4485 units each with 2961 hit points (immune to radiation; weak to fire, cold) with an attack that does 12 slashing damage at initiative 4
     ...> \"\"\"
     iex> ImmuneSystemSimulator.solve_input(input)
-    5216
+    {5216, 51}
   """
   def solve_input(input) do
-    input
-    |> Reindeer.parse()
-    |> Reindeer.remaining_units()
+    reindeer =
+      input
+      |> Reindeer.parse()
+
+    {_, first} =
+      reindeer
+      |> Reindeer.remaining_units()
+
+    second =
+      reindeer
+      |> Reindeer.remaining_units_after_sufficient_boost()
+
+    {first, second}
   end
 end

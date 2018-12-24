@@ -3,6 +3,6 @@ defmodule ImmuneSystemSimulatorTest do
   doctest ImmuneSystemSimulator
 
   test "solves" do
-    assert ImmuneSystemSimulator.solve() == 25088
+    assert ImmuneSystemSimulator.solve() == {25088, 2002}
   end
 end
