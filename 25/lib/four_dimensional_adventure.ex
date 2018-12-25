@@ -38,25 +38,17 @@ defmodule FourDimensionalAdventure do
   end
 
   defp constellate(simple_constellations) do
-    case do_constellate(simple_constellations) do
-      ^simple_constellations -> simple_constellations
-      new_constellations -> constellate(new_constellations)
-    end
-  end
-
-  defp do_constellate(simple_constellations) do
     simple_constellations
-    |> Enum.reduce(%MapSet{}, fn simpler_constellation, current_constellations ->
-      case Enum.find(current_constellations, &constellate?(&1, simpler_constellation)) do
-        nil ->
-          current_constellations
-          |> MapSet.put(simpler_constellation)
+    |> Enum.reduce(%MapSet{}, fn simple_constellation, current_constellations ->
+      case Enum.filter(current_constellations, &constellate?(&1, simple_constellation)) do
+        [] ->
+          MapSet.put(current_constellations, simple_constellation)
 
-        matching_constellation ->
-          new_constellation = MapSet.union(matching_constellation, simpler_constellation)
+        matching_constellations ->
+          new_constellation =
+            Enum.reduce(matching_constellations, simple_constellation, &MapSet.union(&2, &1))
 
-          current_constellations
-          |> MapSet.delete(matching_constellation)
+          Enum.reduce(matching_constellations, current_constellations, &MapSet.delete(&2, &1))
           |> MapSet.put(new_constellation)
       end
     end)
