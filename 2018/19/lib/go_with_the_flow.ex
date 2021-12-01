@@ -31,12 +31,12 @@ defmodule GoWithTheFlow do
       end)
 
     first =
-      Flow.init(ip_reg, program)
+      Flow.init(ip_reg, program, optimize: true)
       |> Flow.execute_until_halt()
       |> CPU.get_register(0)
 
     second =
-      Flow.init(ip_reg, program, 1)
+      Flow.init(ip_reg, program, first_reg_val: 1, optimize: true)
       |> Flow.execute_until_halt()
       |> CPU.get_register(0)
 

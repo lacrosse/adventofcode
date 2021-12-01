@@ -9,24 +9,34 @@ defmodule GoWithTheFlow.Flow do
           program: %{optional(non_neg_integer) => CPU.op()}
         }
 
-  @spec init(CPU.reg(), [CPU.op()], non_neg_integer) :: t
-  def init(ip_reg, program_list, first_reg_val \\ 0) do
+  @spec init(CPU.reg(), [CPU.op()], keyword) :: t
+  def init(ip_reg, program_list, opts \\ []) do
+    first_reg_val = Keyword.get(opts, :first_reg_val, 0)
+
     cpu = CPU.init(6) |> CPU.set_register(0, first_reg_val)
 
-    op_list =
+    original_op_list =
       program_list
       |> Enum.with_index()
       |> Enum.map(fn {op, index} -> {index, op} end)
-      |> optimize_op_list(ip_reg)
+
+    op_list =
+      case Keyword.get(opts, :optimize, false) do
+        true ->
+          original_op_list
+          |> optimize_op_list(ip_reg)
+
+        _ ->
+          original_op_list
+      end
 
     program = Enum.into(op_list, %{})
 
     %__MODULE__{ip_reg: ip_reg, program: program, cpu: cpu}
   end
 
-  def execute_until_halt(%__MODULE__{cpu: cpu} = flow, rounds \\ 0) do
-    # if rem(rounds, 1_000_000) == 0, do: IO.inspect({rounds, cpu}, width: 30)
-
+  @spec execute_until_halt(t) :: CPU.t()
+  def execute_until_halt(%__MODULE__{cpu: cpu} = flow) do
     case current_op(flow) do
       nil ->
         cpu
@@ -34,7 +44,7 @@ defmodule GoWithTheFlow.Flow do
       op ->
         %__MODULE__{flow | cpu: CPU.apply_op(cpu, op)}
         |> incr_instruction_pointer()
-        |> execute_until_halt(rounds + 1)
+        |> execute_until_halt()
     end
   end
 
